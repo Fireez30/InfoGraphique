@@ -196,6 +196,27 @@ class GMap:
         Example of use. gmap.orderedorbit(0,[0,1]).
         Warning: No fixed point for the given alpha should be contained.
         """
+        orbit = []
+        current = dart
+        step = 1;
+        alpha = 0
+        alphamax = len(list_of_alpha_value)
+        while current != dart or step==1:
+            step = step + 1
+            orbit.append(current_dart)
+            current_dart = self.alpha(list_of_alpha_value[alpha],current_dart)
+            alpha = (alpha+1) % alphamax
+        return orbit
+
+      def display(self, color = (190,205,205), add = False):
+        """
+        Display the 2-cells of a 2-G-Map using the ordered orbit of its darts in PlantGL.
+        For each face element, retrieve the position of its ordered face darts and add a FaceSet PlantGL object to the scene.
+        Example : s += pgl.Shape(pgl.FaceSet( [[0,0,0],[1,0,0],[1,1,0],[0,1,0]], [[0,1,2,3]]) , pgl.Material((0,100,0))) # for a green square
+        """
+        from openalea.plantgl.all import *
+        s = Scene()
+         
 
     def dart_display(self, radius=0.1, coef=0.8, add=False):
         import openalea.plantgl.all as pgl
@@ -246,13 +267,7 @@ class GMap:
         else : 
             pgl.Viewer.display(s)
 
-    def display(self, color = (190,205,205), add = False):
-        """
-        Display the 2-cells of a 2-G-Map using the ordered orbit of its darts in PlantGL.
-        For each face element, retrieve the position of its ordered face darts and add a FaceSet PlantGL object to the scene.
-        Example : s += pgl.Shape(pgl.FaceSet( [[0,0,0],[1,0,0],[1,1,0],[0,1,0]], [[0,1,2,3]]) , pgl.Material((0,100,0))) # for a green square
-        """
-        from openalea.plantgl.all import * 
+  
         
 
     def eulercharacteristic(self):
