@@ -208,14 +208,22 @@ class GMap:
             alpha = (alpha+1) % alphamax
         return orbit
 
-      def display(self, color = (190,205,205), add = False):
-        """
-        Display the 2-cells of a 2-G-Map using the ordered orbit of its darts in PlantGL.
-        For each face element, retrieve the position of its ordered face darts and add a FaceSet PlantGL object to the scene.
-        Example : s += pgl.Shape(pgl.FaceSet( [[0,0,0],[1,0,0],[1,1,0],[0,1,0]], [[0,1,2,3]]) , pgl.Material((0,100,0))) # for a green square
-        """
+    def display(self, color = [190,205,205], add = False):
         from openalea.plantgl.all import *
         s = Scene()
+        for key1 in self.elements(2):
+                last = key1
+                pos = []
+                for dart in self.orderedorbit(key1,[0,1]):
+                        if self.alpha(0, dart) != last:
+                                pos.append(self.get_position(dart))
+                        last = dart
+                        mat = Material(color)
+                s.add(Shape(FaceSet(pos),mat, key1))
+        if add : 
+            Viewer.add(s)
+        else : 
+            Viewer.display(s)
          
 
     def dart_display(self, radius=0.1, coef=0.8, add=False):
