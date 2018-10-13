@@ -623,6 +623,99 @@ def holeshape(xsize = 5, ysize = 5, zsize = 5, internalratio = 0.5):
  
     return g
 
+def gmap_edge_split_optimization(gmap, maximal_length=1.0):
+    """
+    Perform one iteration of edge split optimization:
+    Rank the GMap edges by length and iterativelty split 
+    those whose length exceeds maximal_length
+    """
+
+    vertex_positions = array_dict([gmap.get_position(v) for v in gmap.darts()],gmap.darts())
+    vertex_valence = array_dict(np.array(map(len,[gmap.orbit(v,[1,2]) for v in gmap.darts()]))/2,gmap.darts())
+    edge_vertices = np.array([(e,gmap.alpha(0,e)) for e in gmap.elements(1)])
+    edge_lengths = array_dict(np.linalg.norm(vertex_positions.values(edge_vertices[:,1]) - vertex_positions.values(edge_vertices[:,0]),axis=1),keys=gmap.elements(1))
+
+    sorted_edge_length_edges = np.array(gmap.elements(1))[np.argsort(-edge_lengths.values(gmap.elements(1)))]
+    sorted_edge_length_edges = sorted_edge_length_edges[edge_lengths.values(sorted_edge_length_edges)>maximal_length]
+    
+    n_splits = 0
+    print "--> Splitting edges"
+    for e in sorted_edge_length_edges:
+        triangular_gmap_split_edge(gmap,e)
+        n_splits += 1
+    print "<-- Splitting edges (",n_splits," edges split)"
+
+    return n_splits
+
+def gmap_edge_flip_optimization(gmap, target_neighborhood=6):
+    """
+    Perform one iteration of edge flip optimization:
+    Identify the GMap edges that can be flipped and 
+    compute the neighborhood error variation induced by
+    their flip. Rank them along this variation and 
+    perform allowed edge flips for edges with a negative
+    variation.
+    """
+
+    vertex_positions = array_dict([gmap.get_position(v) for v in gmap.darts()],gmap.darts())
+    vertex_valence = array_dict(np.array(map(len,[gmap.orbit(v,[1,2]) for v in gmap.darts()]))/2,gmap.darts())
+
+    edge_vertices = np.array([(e,gmap.alpha(0,e)) for e in gmap.elements(1)])
+    edge_lengths = array_dict(np.linalg.norm(vertex_positions.values(edge_vertices[:,1]) - vertex_positions.values(edge_vertices[:,0]),axis=1),keys=gmap.elements(1))
+    edge_flipped_vertices = np.array([[gmap.alpha(0,gmap.alpha(1,e)),gmap.alpha(0,gmap.alpha(1,gmap.alpha(2,e)))] for e in gmap.elements(1)])
+
+    flippable_edges = np.array(gmap.elements(1))[edge_flipped_vertices[:,0] != edge_flipped_vertices[:,1]]
+    
+    flippable_edge_vertices = edge_vertices[edge_flipped_vertices[:,0] != edge_flipped_vertices[:,1]]
+    flippable_edge_flipped_vertices = np.array([ e for e in edge_flipped_vertices[edge_flipped_vertices[:,0] != edge_flipped_vertices[:,1]]])
+
+    flippable_edge_triangle_vertices = np.array([[np.concatenate([e,[v]]) for v in f] for (e,f) in zip(flippable_edge_vertices,flippable_edge_flipped_vertices)])
+    flippable_edge_flipped_triangle_vertices = np.array([[np.concatenate([f,[v]]) for v in e] for (e,f) in zip(flippable_edge_vertices,flippable_edge_flipped_vertices)])
+
+    from gmap_tools import triangle_geometric_features
+    flippable_edge_triangle_areas = np.concatenate([triangle_geometric_features(flippable_edge_triangle_vertices[:,e],vertex_positions,features=['area']) for e in [0,1]],axis=1)
+    flippable_edge_flipped_triangle_areas = np.concatenate([triangle_geometric_features(flippable_edge_flipped_triangle_vertices[:,e],vertex_positions,features=['area']) for e in [0,1]],axis=1)
+           
+    average_area = np.nanmean(flippable_edge_triangle_areas)
+    flippable_edge_flipped_triangle_areas[np.isnan(flippable_edge_flipped_triangle_areas)] = 100.
+    wrong_edges = np.where(np.abs(flippable_edge_triangle_areas.sum(axis=1)-flippable_edge_flipped_triangle_areas.sum(axis=1)) > average_area/10.)
+
+    flippable_edges = np.delete(flippable_edges,wrong_edges,0)
+    flippable_edge_vertices = np.delete(flippable_edge_vertices,wrong_edges,0)
+    flippable_edge_triangle_vertices = np.delete(flippable_edge_triangle_vertices,wrong_edges,0)
+    flippable_edge_flipped_vertices = np.delete(flippable_edge_flipped_vertices,wrong_edges,0)
+    flippable_edge_flipped_triangle_vertices = np.delete(flippable_edge_flipped_triangle_vertices,wrong_edges,0)
+    flippable_edge_triangle_areas = np.delete(flippable_edge_triangle_areas,wrong_edges,0)
+    flippable_edge_flipped_triangle_areas =  np.delete(flippable_edge_flipped_triangle_areas,wrong_edges,0)
+                
+    flippable_edge_neighborhood_error = np.power(vertex_valence.values(flippable_edge_vertices)-target_neighborhood,2.0).sum(axis=1)
+    flippable_edge_neighborhood_error += np.power(vertex_valence.values(flippable_edge_flipped_vertices)-target_neighborhood,2.0).sum(axis=1)
+    flippable_edge_neighborhood_flipped_error = np.power(vertex_valence.values(flippable_edge_vertices)-1-target_neighborhood,2.0).sum(axis=1)
+    flippable_edge_neighborhood_flipped_error += np.power(vertex_valence.values(flippable_edge_flipped_vertices)+1-target_neighborhood,2.0).sum(axis=1)
+
+    n_flips = 0 
+    if len(flippable_edges)>0:
+
+        flippable_edge_energy_variation = array_dict(flippable_edge_neighborhood_flipped_error-flippable_edge_neighborhood_error,flippable_edges)
+
+        flippable_edge_sorted_energy_variation_edges = flippable_edges[np.argsort(flippable_edge_energy_variation.values(flippable_edges))]
+        flippable_edge_sorted_energy_variation_edges = flippable_edge_sorted_energy_variation_edges[flippable_edge_energy_variation.values(flippable_edge_sorted_energy_variation_edges)<0] modified_darts = set() print "--> Flipping edges"
+
+        for e in flippable_edge_sorted_energy_variation_edges:
+
+            flippable_edge = (len(modified_darts.intersection(set(gmap.orbit(e,[1,2])))) == 0)
+            flippable_edge = flippable_edge and (len(modified_darts.intersection(set(gmap.orbit(gmap.alpha(0,e),[1,2])))) == 0)
+            flippable_edge = flippable_edge and (len(modified_darts.intersection(set(gmap.orbit(gmap.alpha(0,gmap.alpha(1,e)),[1,2])))) == 0)
+            flippable_edge = flippable_edge and (len(modified_darts.intersection(set(gmap.orbit(gmap.alpha(0,gmap.alpha(1,gmap.alpha(2,e))),[1,2])))) == 0)
+
+            if flippable_edge:
+                n_e = len(gmap.elements(1))
+                mod = triangular_gmap_flip_edge(gmap,e)
+                modified_darts = modified_darts.union(set(mod))
+                n_flips += 1
+        print "<-- Flipping edges (",n_flips," edges flipped)"
+
+    return n_flips
 
 def gmap_laplacian_smoothing(gmap, coef=0.5):
     aList = {}
@@ -667,25 +760,97 @@ def triangular_gmap_split_edge(gmap, dart):
     by adding a new vertex in the middle of the edge and linking
     it to the opposite vertices of the adjacent triangles.
     """
-    orbit = gmap.orbit(dart,[0,1]);
-    sum = 0 
-    for point in orbit:
-        sum += point.position
-    //diviser par 4
-    
+    edge_center = self.element_center(dart, 1)
+    ndart = self.split_edge(dart)
+    self.set_position(ndart, edge_center)
+    for d in self.orbit(ndart, 1):
+        self.split_face(d)
     # Compute the position of the edge center
     # Split the edge and get the new vertex dart
     # Update the position of the new vertex to the edge center
     # Split the face(s) incident to the new vertex
-    
+
+def triangular_gmap_flip_edge(gmap, dart):
+    """
+    Perform a topological flip operation on a triangular GMap
+    by modifying the alpha_1 relationships of the darts impacted :
+    6 (reciprocal) relationships to update + make sure that 
+    position dictionary is not impacted
+    """
+
+    # Compute a dictionary of the new alpha_1 relationships of :
+    # dart, alpha_0(dart), alpha_2(dart), alpha_0(alpha_2(dart)),
+    # alpha_1(dart), alpha_1(alpha_0(dart)) 
+    newRelations = [gmap.alpha_composed([0,1],dart),gmap.alpha_composed([0,1,2],dart),gmap.alpha_composed([0,1,0],dart),gmap.alpha_composed([0,1,0,2],dart),gmap.alpha_composed([1,2],dart),gmap.alpha_composed([1,2,0],dart)]
+
+
+    # Make sure that no dart in the orbit 1 of dart is a key of
+    # the positions dictionary, otherwise transfer the position
+    # to another embedding dart
+    orbit1 = gmap.orbit(dart,[1])
+    for element in orbi1:
+        if gmap.positions[element] is not None:
+            gmap.positions[element] = gmap.get_embedding_dart(element,gmap.positons)
+
+    # Assert that the new alpha_1 is still without fixed points
+    bool flag = True
+    for key in newRelations:
+        if gmap.is_free(0, key):
+            flag = false
+
+    if flag:
+        gmap.alpha(1,dart) = newRelations[0]
+        gmap.alpha_composed([0,1],dart) = newRelations[1]
+        gmap.alpha_composed([2,1],dart) = newRelations[2]
+        gmap.alpha_composed([0,2,1],dart) = newRelations[3]
+        gmap.alpha_composed([1,1],dart) = newRelations[4]
+        gmap.alpha_composed([0,1,1],dart) = newRelations[5]
+
+    # Set the alphas of the GMap to their new values 
+    # (not forgetting the reciprocal alpha_1)
+
+    # Return the list of all darts  whose valence will be
+    # impacted by the topological change
+
+
+def remeshing(filename):
+# Load a PLY file into a GMap
+# Display it
+# Compute the maximal length for an edge
+# While more than 10% of edges have been split or flipped :
+    # Perform a split optimization (returns n_splits)
+    # Display the GMap
+    # Perform a flip optimization (returns n_flips)
+    # Display the GMap
+    # Perform n iterations of Taubin smoothing
+    # Display the GMap
+
+    points, triangles = read_ply_mesh(filename)
+    gmap = gmap_from_triangular_mesh(points, triangles, center=True) 
+    gmap.display()
+    # Compute the maximal length for an edge
+    vertex_positions = array_dict([gmap.get_position(v) for v in gmap.darts()],gmap.darts())
+    edge_vertices = np.array([(e,gmap.alpha(0,e)) for e in gmap.elements(1)])
+    edge_lengths = array_dict(np.linalg.norm(vertex_positions.values(edge_vertices[:,1]) - vertex_positions.values(edge_vertices[:,0]),axis=1),keys=gmap.elements(1))
+    sorted_edge_length_edges = np.array(gmap.elements(1))[np.argsort(-edge_lengths.values(gmap.elements(1)))]
+    sorted_edge_length_edges = sorted_edge_length_edges[edge_lengths.values(sorted_edge_length_edges)>maximal_length]
+    max_len = sorted_edge_length_edges[0]
+    edge_number = len(sorted_edge_length_edges)
+    sum = edge_number
+    while sum > 0.1*edge_number
+        sum = 0
+        sum += gmap_edge_split_optimization(gmap)
+        gmap.display()
+        sum += gmap_edge_flip_optimization(gmap)
+        gmap.display()
+        for i in range(4)
+        gmap_taubin_smoothing(gmap)
+        gmap.display()
 
 if __name__ == '__main__':
     filename = 'cow.ply'
     points, triangles = read_ply_mesh(filename)
     gmap = gmap_from_triangular_mesh(points, triangles, center=True)  
     gmap_add_uniform_noise(gmap, coef=0.05)
-    gmap_taubin_smoothing(gmap, 0.33, 0.34, 0.5)
-    gmap_taubin_smoothing(gmap, 0.33, 0.34, 0.5)
-    gmap_taubin_smoothing(gmap, 0.33, 0.34, 0.5)
-    gmap_taubin_smoothing(gmap, 0.33, 0.34, 0.5)
     gmap.display()
+    #remeshing("***.ply")
