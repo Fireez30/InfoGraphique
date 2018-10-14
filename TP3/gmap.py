@@ -699,7 +699,9 @@ def gmap_edge_flip_optimization(gmap, target_neighborhood=6):
         flippable_edge_energy_variation = array_dict(flippable_edge_neighborhood_flipped_error-flippable_edge_neighborhood_error,flippable_edges)
 
         flippable_edge_sorted_energy_variation_edges = flippable_edges[np.argsort(flippable_edge_energy_variation.values(flippable_edges))]
-        flippable_edge_sorted_energy_variation_edges = flippable_edge_sorted_energy_variation_edges[flippable_edge_energy_variation.values(flippable_edge_sorted_energy_variation_edges)<0] modified_darts = set() print "--> Flipping edges"
+        flippable_edge_sorted_energy_variation_edges = flippable_edge_sorted_energy_variation_edges[flippable_edge_energy_variation.values(flippable_edge_sorted_energy_variation_edges)<0] 
+        modified_darts = set() 
+        print "--> Flipping edges"
 
         for e in flippable_edge_sorted_energy_variation_edges:
 
@@ -793,18 +795,18 @@ def triangular_gmap_flip_edge(gmap, dart):
             gmap.positions[element] = gmap.get_embedding_dart(element,gmap.positons)
 
     # Assert that the new alpha_1 is still without fixed points
-    bool flag = True
+    flag = True
     for key in newRelations:
         if gmap.is_free(0, key):
             flag = false
 
     if flag:
-        gmap.alpha(1,dart) = newRelations[0]
-        gmap.alpha_composed([0,1],dart) = newRelations[1]
-        gmap.alpha_composed([2,1],dart) = newRelations[2]
-        gmap.alpha_composed([0,2,1],dart) = newRelations[3]
-        gmap.alpha_composed([1,1],dart) = newRelations[4]
-        gmap.alpha_composed([0,1,1],dart) = newRelations[5]
+        gmap.alphas[1][dart] = newRelations[0]
+        gmap.alphas[0][gmap.alphas[1][dart]] = newRelations[1]
+        gmap.alphas[2][gmap.alphas[1][dart]] = newRelations[2]
+        gmap.alphas[0][gmap.alphas[2][gmap.alphas[1][dart]]] = newRelations[3]
+        gmap.alphas[1][gmap.alphas[1][dart]] = newRelations[4]
+        gmap.alphas[0][gmap.alphas[1][gmap.alphas[1][dart]]] = newRelations[5]
 
     # Set the alphas of the GMap to their new values 
     # (not forgetting the reciprocal alpha_1)
@@ -837,20 +839,19 @@ def remeshing(filename):
     max_len = sorted_edge_length_edges[0]
     edge_number = len(sorted_edge_length_edges)
     sum = edge_number
-    while sum > 0.1*edge_number
+    while sum > 0.1*edge_number:
         sum = 0
         sum += gmap_edge_split_optimization(gmap)
         gmap.display()
         sum += gmap_edge_flip_optimization(gmap)
         gmap.display()
-        for i in range(4)
-        gmap_taubin_smoothing(gmap)
+        for i in range(4):
+            gmap_taubin_smoothing(gmap)
         gmap.display()
 
 if __name__ == '__main__':
-    filename = 'cow.ply'
+    filename = 'bunny.ply'
     points, triangles = read_ply_mesh(filename)
     gmap = gmap_from_triangular_mesh(points, triangles, center=True)  
     gmap_add_uniform_noise(gmap, coef=0.05)
     gmap.display()
-    #remeshing("***.ply")
