@@ -201,11 +201,15 @@ def basis(i, k, u, knots):
     """
     if k == 0 :
         return 1
+
     nu = (i/k)
+
     if u[i] <= nu and u[i+1] > nu:
         return 0
+
     f1 = (nu-u[i])/(u[i]+k-u[i])*basis(i,k-1,u,knots)
     f2 = ((u[i+k+1]-nu)/(u[i+k+1])-(u[i+1]))*basis(i+1,k-1,u,knots)
+
     return f1 + f2
 
 def knot_vector(k, n, u_min=0., u_max=1.):
@@ -216,6 +220,8 @@ def knot_vector(k, n, u_min=0., u_max=1.):
     n_internals = m-2*k-1
  
     # complete
+    #uniforme knot vector means, have k same values at each end (beggining and end)  of the vector
+    # ti+1 - ti = constant pour tout i
  
     assert(len(knots) == m)
     return knots
