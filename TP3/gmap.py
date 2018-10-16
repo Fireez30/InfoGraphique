@@ -790,7 +790,7 @@ def triangular_gmap_flip_edge(gmap, dart):
     # the positions dictionary, otherwise transfer the position
     # to another embedding dart
     orbit1 = gmap.orbit(dart,[1])
-    for element in orbi1:
+    for element in orbit1:
         if gmap.positions[element] is not None:
             gmap.positions[element] = gmap.get_embedding_dart(element,gmap.positons)
 
@@ -826,7 +826,7 @@ def remeshing(filename):
     # Display the GMap
     # Perform n iterations of Taubin smoothing
     # Display the GMap
-
+    maximal_length=1.0
     points, triangles = read_ply_mesh(filename)
     gmap = gmap_from_triangular_mesh(points, triangles, center=True) 
     gmap.display()
@@ -853,5 +853,6 @@ if __name__ == '__main__':
     filename = 'bunny.ply'
     points, triangles = read_ply_mesh(filename)
     gmap = gmap_from_triangular_mesh(points, triangles, center=True)  
-    gmap_add_uniform_noise(gmap, coef=0.05)
+    #gmap_add_uniform_noise(gmap, coef=0.05)
+    gmap_edge_split_optimization(gmap)
     gmap.display()
