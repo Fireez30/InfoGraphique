@@ -762,11 +762,11 @@ def triangular_gmap_split_edge(gmap, dart):
     by adding a new vertex in the middle of the edge and linking
     it to the opposite vertices of the adjacent triangles.
     """
-    edge_center = self.element_center(dart, 1)
-    ndart = self.split_edge(dart)
-    self.set_position(ndart, edge_center)
-    for d in self.orbit(ndart, 1):
-        self.split_face(d)
+    edge_center = gmap.element_center(dart, 1)
+    ndart = gmap.split_edge(dart)
+    gmap.set_position(ndart, edge_center)
+    for d in gmap.orbit(ndart, [0,2]):
+        gmap.split_face(d)
     # Compute the position of the edge center
     # Split the edge and get the new vertex dart
     # Update the position of the new vertex to the edge center
@@ -789,7 +789,7 @@ def triangular_gmap_flip_edge(gmap, dart):
     # Make sure that no dart in the orbit 1 of dart is a key of
     # the positions dictionary, otherwise transfer the position
     # to another embedding dart
-    orbit1 = gmap.orbit(dart,[1])
+    orbit1 = gmap.orbit(dart,[0,2])
     for element in orbit1:
         if gmap.positions[element] is not None:
             gmap.positions[element] = gmap.get_embedding_dart(element,gmap.positons)
@@ -854,5 +854,5 @@ if __name__ == '__main__':
     points, triangles = read_ply_mesh(filename)
     gmap = gmap_from_triangular_mesh(points, triangles, center=True)  
     #gmap_add_uniform_noise(gmap, coef=0.05)
-    gmap_edge_split_optimization(gmap)
+    gmap_edge_flip_optimization(gmap,0.1)
     gmap.display()
