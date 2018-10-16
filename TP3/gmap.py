@@ -765,8 +765,8 @@ def triangular_gmap_split_edge(gmap, dart):
     edge_center = gmap.element_center(dart, 1)
     ndart = gmap.split_edge(dart)
     gmap.set_position(ndart, edge_center)
-    for d in gmap.orbit(ndart, [0,2]):
-        gmap.split_face(d)
+    for i in gmap.incident_cells(ndart,0,2):
+        gmap.split_face(i)
     # Compute the position of the edge center
     # Split the edge and get the new vertex dart
     # Update the position of the new vertex to the edge center
@@ -854,5 +854,5 @@ if __name__ == '__main__':
     points, triangles = read_ply_mesh(filename)
     gmap = gmap_from_triangular_mesh(points, triangles, center=True)  
     #gmap_add_uniform_noise(gmap, coef=0.05)
-    gmap_edge_flip_optimization(gmap,0.1)
+    gmap_edge_split_optimization(gmap,0.1)
     gmap.display()
