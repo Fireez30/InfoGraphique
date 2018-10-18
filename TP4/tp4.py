@@ -254,6 +254,20 @@ def spline_b(control_points, nb_points=10):
 		res.append([sumx,sumy,sumz])
 	return res
 
+def nurbs(control_points,control_points_weight, nb_points=10):
+    flag = True
+    for i in control_points_weight:
+        if (i != 1):
+            flag = false
+
+    if (flag):
+        result = spline_b(control_points,nb_points)
+        return result
+
+    
+        
+
+
 if __name__ == '__main__':
     P1 = [0,0,0]
     P2 = [5,5,0]

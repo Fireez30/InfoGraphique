@@ -735,17 +735,17 @@ def gmap_dist(gmap,i,j):
     return math.sqrt(math.pow(i[0]-j[0],2)+math.pow(i[1]-j[1],2)+math.pow(i[2]-j[2],2))
 
 def gmap_gcalc(i,j,gaussian_sigma,gmap):
-    return math.exp(-math.pow(gmap_dist(gmap,gmap.get_position(i),gmap.get_position(j)),2)/math.pow(gaussian_sigma,2))
+    return -1.0*math.exp((float(math.pow(gmap_dist(gmap,gmap.get_position(i),gmap.get_position(j)),2.0)))/(float(math.pow(gaussian_sigma,2.0))))
 
 def gmap_gaussian_smoothing(gmap, coef=0.5, gaussian_sigma=None):
     aList = {}
     for element in gmap.positions:
             voisins = gmap.adjacent_cells(element,0)
             sum = 0
-            ksum = 0
+            ksum = float(0)
             for n in voisins:
-                ksum = ksum + gmap_gcalc(element,n,gaussian_sigma,gmap)
-                sum = sum + (gmap_gcalc(element,n,gaussian_sigma,gmap)/ksum)*(gmap.get_position(n)-gmap.get_position(element))
+                ksum += 1.0*gmap_gcalc(element,n,gaussian_sigma,gmap)
+                sum = sum + 1.0*(gmap_gcalc(element,n,gaussian_sigma,gmap)/ksum)*(gmap.get_position(n)-gmap.get_position(element))
             sum = sum * coef
             sum = sum + gmap.get_position(element)
             aList[element] = sum 
@@ -791,8 +791,14 @@ def triangular_gmap_flip_edge(gmap, dart):
     # to another embedding dart
     orbit1 = gmap.orbit(dart,[0,2])
     for element in orbit1:
-        if gmap.positions[element] is not None:
-            gmap.positions[element] = gmap.get_embedding_dart(element,gmap.positons)
+        if (element in gmap.positions.keys()):
+            emb = gmap.orbit(element,[1,2])
+            for p2 in emb:
+                #a finir
+                if (p2 not in gmap.positions.keys()):
+                    gmap.positions[p2] = gmap.positions[element]
+                    del(gmap.positions[element])
+                    break
 
     # Assert that the new alpha_1 is still without fixed points
     flag = True
@@ -809,8 +815,8 @@ def triangular_gmap_flip_edge(gmap, dart):
         gmap.alphas[0][gmap.alphas[1][gmap.alphas[1][dart]]] = newRelations[5]
 
     # Set the alphas of the GMap to their new values 
-    # (not forgetting the reciprocal alpha_1)
-
+    # (not forgetting the reciprocal alpha_1
+    return []
     # Return the list of all darts  whose valence will be
     # impacted by the topological change
 
@@ -831,6 +837,7 @@ def remeshing(filename):
     gmap = gmap_from_triangular_mesh(points, triangles, center=True) 
     gmap.display()
     # Compute the maximal length for an edge
+    
     vertex_positions = array_dict([gmap.get_position(v) for v in gmap.darts()],gmap.darts())
     edge_vertices = np.array([(e,gmap.alpha(0,e)) for e in gmap.elements(1)])
     edge_lengths = array_dict(np.linalg.norm(vertex_positions.values(edge_vertices[:,1]) - vertex_positions.values(edge_vertices[:,0]),axis=1),keys=gmap.elements(1))
@@ -838,12 +845,13 @@ def remeshing(filename):
     sorted_edge_length_edges = sorted_edge_length_edges[edge_lengths.values(sorted_edge_length_edges)>maximal_length]
     max_len = sorted_edge_length_edges[0]
     edge_number = len(sorted_edge_length_edges)
+
     sum = edge_number
     while sum > 0.1*edge_number:
         sum = 0
-        sum += gmap_edge_split_optimization(gmap)
+        sum += gmap_edge_split_optimization(gmap,0.1)
         gmap.display()
-        sum += gmap_edge_flip_optimization(gmap)
+        sum += gmap_edge_flip_optimization(gmap,0.1)
         gmap.display()
         for i in range(4):
             gmap_taubin_smoothing(gmap)
@@ -853,6 +861,7 @@ if __name__ == '__main__':
     filename = 'bunny.ply'
     points, triangles = read_ply_mesh(filename)
     gmap = gmap_from_triangular_mesh(points, triangles, center=True)  
-    #gmap_add_uniform_noise(gmap, coef=0.05)
-    gmap_edge_split_optimization(gmap,0.1)
+    gmap_add_uniform_noise(gmap, coef=0.05)
+    gmap_gaussian_smoothing(gmap)
+    #gmap_edge_flip_optimization(gmap,0.1)
     gmap.display()
