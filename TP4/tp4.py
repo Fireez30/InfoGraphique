@@ -254,6 +254,18 @@ def spline_b(control_points, nb_points=10):
 		res.append([sumx,sumy,sumz])
 	return res
 
+def rcalc(i,k,u,knots,control_points_weight):
+    f1 = basis(i,k,u,knots)*control_point_weight[i]
+    sum = 0
+    for j in range(len(control_points_weight)):
+        sum += basis(j,k,u,knots)*control_point_weight[j]
+
+    if sum == 0:
+        sum = 1
+
+    return f1/sum
+
+
 def nurbs(control_points,control_points_weight, nb_points=10):
     flag = True
     for i in control_points_weight:
@@ -264,9 +276,22 @@ def nurbs(control_points,control_points_weight, nb_points=10):
         result = spline_b(control_points,nb_points)
         return result
 
-    
-        
+    v = knot_vector(len(control_points)-1,len(control_points)-1)
+    res = []
+    if nb_points == 0:
+        return res
 
+    for i in range(nb_points):
+        u = i/float(nb_points-1)
+        sumx = 0
+        sumy = 0
+        sumz = 0
+        for id in range(len(control_points)):
+            sumx += rcalc(id,len(control_points)-1,u,v) * control_points_weight[id]
+            sumy += basis(id,len(control_points)-1,u,v) * control_points_weight[id]
+            sumz += basis(id,len(control_points)-1,u,v) * control_points_weight[id]
+        res.append([sumx,sumy,sumz])
+    return res
 
 if __name__ == '__main__':
     P1 = [0,0,0]
