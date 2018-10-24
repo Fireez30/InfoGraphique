@@ -423,16 +423,12 @@ class GMap:
         self.positions[self.get_embedding_dart(dart,self.positions)] = np.array(position)
 
 def meanpoint(point_list):
-    mean = [0,0,0]
+    meanL = []
     for elmt in point_list:
-        mean[0] += elmt[0]
-        mean[1] += elmt[1]
-        mean[2] += elmt[2]
-    mean[0] = mean[0] / len(point_list)
-    mean[1] = mean[1] / len(point_list)
-    mean[2] = mean[2] / len(point_list)
+        meanL += elmt
+    meanL = meanL / len(point_list)
 
-    return mean
+    return meanL
 
 def catmullclark(gmap):
     # Compute a dictionary of face points equal to the face center
@@ -452,11 +448,11 @@ def catmullclark(gmap):
     # return the mean
     def compute_edgepoint(edart):
         corners = dict([])
-        for p in incident_cells(edart,0,1):
+        for p in gmap.incident_cells(edart,0,1):
             corners[p] = gmap.get_position(p)
-        for f in incident_cells(edart,0,2):
-            corners[f] = get_position(get_facepoint(f))
-        newPos = mean(corners)
+        for f in gmap.incident_cells(edart,0,2):
+            corners[f] = get_facepoint(f)
+        newPos = meanpoint(corners)
 
     # Create a local function to access the edgepoint from any dart of the edge
     def get_edgepoint(edart):
@@ -471,13 +467,13 @@ def catmullclark(gmap):
 
     def compute_vertexpoint(vdart):
         # For this, compute the mean of edgepoints of incident edges (E),
-        iedges = incident_cells(edart,1)
+        iedges = gmap.incident_cells(edart,1)
         ep2 = dict([])
         for key in iedges:
             ep2[key] = get_edgepoint(key)
         E = meanpoint(ep2)
         # the mean of facepoints of incident faces (F) and the current
-        ifaces = incident_cells(edart,2)
+        ifaces = gmap.incident_cells(edart,2)
         ep3 = dict([])
         for key in iface:
             ep3[key] = get_facepoint(key)
@@ -487,7 +483,7 @@ def catmullclark(gmap):
         V = gmap.get_position(edart)
         # Use the valence of the vertex (k, number of incident edges) to 
         # compute the new position:
-        k = len (incident_cells(edart,1))
+        k = len (gmap.incident_cells(edart,1))
         # V* &lt;- ((k-3)V + 2E + F)/k
         Vstar[0] = ((k-3)*V[0]+2*E[0]+F[0])/k
         Vstar[1] = ((k-3)*V[1]+2*E[1]+F[1])/k
@@ -514,6 +510,26 @@ def catmullclark(gmap):
     # corresponding to face points, and connect them to the edge point 
     # vertices inserted previously:
     # Iterate over all the faces
+    for face in gmap.elements(2):
+        facePos = get_facepoint(face)
+        toProcess=[]
+        for vert in gmap.incident_cells(facePos,1,0):
+            if vert in InsDarts:
+                toProcess.append(vert)
+
+        newProcess=[]
+        for elmt in toProcess:
+            newEdge = gmap.insert_edge(elmt)
+            #trouvez le dart de l'autre coté de l'arete ici
+
+        for elmt in newProcess:
+            free = gmap.is_free(1,elmt)
+            if (free):
+                nextDart = gmap.alpha_composed([0,1,0,1,0,1,0],elmt)
+                gmap.link_darts(1,nextDart,elmt)
+            gmap.set_position(newProcess[0],facePos)
+
+
         # Store the postion of the face point corresponding to the face
         # Iterate over all the incident vertices of the face
             # Check if the vertex corresponds to an edge point (inserted 
