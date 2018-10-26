@@ -423,7 +423,7 @@ class GMap:
         self.positions[self.get_embedding_dart(dart,self.positions)] = np.array(position)
 
 def meanpoint(point_list):
-    meanL = []
+    meanL = 0
     for elmt in point_list:
         meanL += elmt
     meanL = meanL / len(point_list)
@@ -500,7 +500,8 @@ def catmullclark(gmap):
     InsDarts = []
     for e in edges:
         tmp = gmap.split_edge(e)
-        InsDarts.append(tmp)
+        gmap.set_position(tmp,edgepoints[e])
+        InsDarts += gmap.orbit(tmp,[1,2])
     # (use split_edge) and set the position to the new vertex.
     # Doing so, fill a list with all the new inserted darts 
     # (vertex orbits of the new darts created by the split)
@@ -513,13 +514,14 @@ def catmullclark(gmap):
     for face in gmap.elements(2):
         facePos = get_facepoint(face)
         toProcess=[]
-        for vert in gmap.incident_cells(facePos,1,0):
-            if vert in InsDarts:
+        for vert in gmap.incident_cells(face,2,0):
+            if vert in edgepoints:
                 toProcess.append(vert)
 
         newProcess=[]
         for elmt in toProcess:
             newEdge = gmap.insert_edge(elmt)
+            newProcess.append(gmap.orbit(newEdge,[1,2])[0])
             #trouvez le dart de l'autre coté de l'arete ici
 
         for elmt in newProcess:
@@ -527,7 +529,7 @@ def catmullclark(gmap):
             if (free):
                 nextDart = gmap.alpha_composed([0,1,0,1,0,1,0],elmt)
                 gmap.link_darts(1,nextDart,elmt)
-            gmap.set_position(newProcess[0],facePos)
+        gmap.set_position(newProcess[0],facePos)
 
 
         # Store the postion of the face point corresponding to the face
@@ -687,4 +689,6 @@ def holeshape(xsize = 5, ysize = 5, zsize = 5, internalratio = 0.5):
 
 if __name__ == '__main__':
     mymap = cube()
+
     catmullclark(mymap)
+    mymap.display()
